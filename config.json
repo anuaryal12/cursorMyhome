@@ -1,5 +1,10 @@
 {
   "baseUrl": "https://myhome-react-dev.azurewebsites.net/",
   "email": "russell@myhomeclean.com.au",
-  "password": "P@ssw0rd"
+  "password": "P@ssw0rd",
+  "enquiryTestData": {
+    "firstName": "TestFirst",
+    "lastName": "TestLast",
+    "phone": "0400123456"
+  }
 }

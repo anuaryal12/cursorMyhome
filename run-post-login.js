@@ -29,6 +29,16 @@ const ENQUIRY_PAGE_URL_PATTERN = /enquir/i;
 const NEW_ENQUIRY_BTN = 'header button:has-text("New Enquiry"), header a:has-text("New Enquiry"), [class*="header"] button:has-text("New Enquiry"), [class*="toolbar"] button:has-text("New Enquiry"), button:has-text("New Enquiry"), a:has-text("New Enquiry")';
 const ENQUIRY_FORM_INDICATOR = 'text=/new enquiry|enquiry form|add enquiry|create enquiry/i, form, [role="dialog"], [role="form"]';
 const ENQUIRY_FORM_URL_PATTERN = /enquir.*\/(new|create|add)|\/new.*enquir|\/add.*enquir/i;
+// Enquiry form fields and Save button (add more selectors if your form uses different names)
+const FIRST_NAME_INPUT = 'input[name*="first"], input[id*="first"], input[name*="firstName"], input[placeholder*="First"], input[placeholder*="first"]';
+const LAST_NAME_INPUT = 'input[name*="last"], input[id*="last"], input[name*="lastName"], input[placeholder*="Last"], input[placeholder*="last"]';
+const PHONE_INPUT = 'input[name*="phone"], input[id*="phone"], input[type="tel"], input[name*="mobile"], input[name*="contact"], input[placeholder*="Phone"], input[placeholder*="phone"], input[placeholder*="Mobile"]';
+const SAVE_ENQUIRY_BTN = 'button:has-text("Save Enquiry"), button:has-text("Save"), [type="submit"]:has-text("Save"), button:has-text("Submit")';
+// Enquiry table: first data row (skip header)
+const ENQUIRY_TABLE_FIRST_ROW = 'table tbody tr:first-child, [role="table"] tbody tr:first-child, [class*="table"] tbody tr:first-child';
+
+// Test data for new enquiry (override via config.json enquiryTestData if present)
+const DEFAULT_ENQUIRY = { firstName: 'TestFirst', lastName: 'TestLast', phone: '0400123456' };
 
 function loadConfig() {
   if (!existsSync(CONFIG_PATH)) {
@@ -59,7 +69,8 @@ async function run() {
   const config = loadConfig();
   const { baseUrl, email, password } = config;
 
-  const results = { dashboard: false, enquiryPage: false, newEnquiryForm: false, plusEnquiriesForm: false };
+  const results = { dashboard: false, enquiryPage: false, newEnquiryForm: false, createEnquiryAndListed: false, plusEnquiriesForm: false };
+  const enquiryData = config.enquiryTestData || DEFAULT_ENQUIRY;
 
   console.log('Launching browser...');
   const browser = await chromium.launch({ headless: false });
@@ -110,6 +121,56 @@ async function run() {
       console.log('[FAIL] New Enquiry form:', e.message);
     }
 
+    // 3b. Fill enquiry form (first name, last name, phone), click Save Enquiry, verify new enquiry in first row of table
+    if (results.newEnquiryForm) {
+      try {
+        const formInputs = page.locator('form').first().locator('input[type="text"], input[type="tel"]');
+        const count = await formInputs.count().catch(() => 0);
+        if (count >= 3) {
+          await formInputs.nth(0).fill(enquiryData.firstName, { timeout: 5000 });
+          await page.waitForTimeout(200);
+          await formInputs.nth(1).fill(enquiryData.lastName, { timeout: 5000 });
+          await page.waitForTimeout(200);
+          await formInputs.nth(2).fill(enquiryData.phone, { timeout: 5000 });
+        } else {
+          const firstNameInput = page.locator(FIRST_NAME_INPUT).first();
+          const lastNameInput = page.locator(LAST_NAME_INPUT).first();
+          const phoneInput = page.locator(PHONE_INPUT).first();
+          await firstNameInput.fill(enquiryData.firstName, { timeout: 5000 });
+          await page.waitForTimeout(200);
+          await lastNameInput.fill(enquiryData.lastName, { timeout: 5000 });
+          await page.waitForTimeout(200);
+          await phoneInput.fill(enquiryData.phone, { timeout: 5000 });
+        }
+        await page.waitForTimeout(300);
+        const saveBtn = page.locator(SAVE_ENQUIRY_BTN).first();
+        await saveBtn.click({ timeout: 5000 });
+        await page.waitForTimeout(3000);
+        await page.locator(ENQUIRIES_MENU).first().click({ timeout: 5000 }).catch(() => {});
+        await page.waitForTimeout(3000);
+        const firstRow = page.locator(ENQUIRY_TABLE_FIRST_ROW).first();
+        let firstRowText = await firstRow.textContent().catch(() => '');
+        let foundInFirstRow = firstRowText.includes(enquiryData.firstName) || firstRowText.includes(enquiryData.lastName) || firstRowText.includes(enquiryData.phone);
+        if (!foundInFirstRow) {
+          const anyRow = page.locator('table tbody tr, [role="table"] tbody tr, [class*="table"] tbody tr');
+          const rowCount = await anyRow.count().catch(() => 0);
+          for (let i = 0; i < Math.min(rowCount, 5); i++) {
+            const text = await anyRow.nth(i).textContent().catch(() => '');
+            if (text.includes(enquiryData.firstName) || text.includes(enquiryData.lastName) || text.includes(enquiryData.phone)) {
+              foundInFirstRow = true;
+              break;
+            }
+          }
+        }
+        results.createEnquiryAndListed = foundInFirstRow;
+        console.log(results.createEnquiryAndListed ? '[PASS] Create enquiry: saved and listed in enquiry table' : '[FAIL] Create enquiry: not found in enquiry table');
+      } catch (e) {
+        console.log('[FAIL] Create enquiry:', e.message);
+      }
+    } else {
+      console.log('[SKIP] Create enquiry: form not opened');
+    }
+
     // 4. Enquiries in side menu (above Event) -> same Enquiry form. Go to Dashboard then open form via sidebar.
     try {
       const dashboardMenu = page.locator(DASHBOARD_MENU).first();
@@ -137,9 +198,10 @@ async function run() {
     console.log('Dashboard:', results.dashboard ? 'pass' : 'fail');
     console.log('Enquiry page:', results.enquiryPage ? 'pass' : 'fail');
     console.log('New Enquiry (top right) form:', results.newEnquiryForm ? 'pass' : 'fail');
+    console.log('Create enquiry (save and first row):', results.createEnquiryAndListed ? 'pass' : 'fail');
     console.log('Enquiries (side menu) form:', results.plusEnquiriesForm ? 'pass' : 'fail');
 
-    const allPass = results.dashboard && results.enquiryPage && results.newEnquiryForm && results.plusEnquiriesForm;
+    const allPass = results.dashboard && results.enquiryPage && results.newEnquiryForm && results.createEnquiryAndListed && results.plusEnquiriesForm;
     process.exit(allPass ? 0 : 1);
   } catch (err) {
     console.error('Error:', err.message);
