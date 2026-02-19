@@ -1,0 +1,15 @@
+{
+  "name": "myhome-automation",
+  "version": "1.0.0",
+  "description": "Playwright automation for MyHome React app",
+  "type": "module",
+  "scripts": {
+    "start": "node run.js",
+    "post-login": "node run-post-login.js",
+    "scenarios": "node run-scenarios.js",
+    "scenarios:headed": "node run-scenarios.js --headed"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}

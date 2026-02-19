@@ -1,0 +1,61 @@
+{
+  "baseUrl": "https://myhome-react-dev.azurewebsites.net/",
+  "scenarios": [
+    {
+      "id": "valid-login",
+      "name": "Valid credentials – login succeeds",
+      "type": "positive",
+      "email": "russell@myhomeclean.com.au",
+      "password": "P@ssw0rd",
+      "expected": "success"
+    },
+    {
+      "id": "invalid-password",
+      "name": "Valid email, wrong password",
+      "type": "negative",
+      "email": "russell@myhomeclean.com.au",
+      "password": "WrongPassword123",
+      "expected": "failure"
+    },
+    {
+      "id": "invalid-email",
+      "name": "Wrong email, valid password",
+      "type": "negative",
+      "email": "unknown@example.com",
+      "password": "P@ssw0rd",
+      "expected": "failure"
+    },
+    {
+      "id": "empty-email",
+      "name": "Empty email field",
+      "type": "negative",
+      "email": "",
+      "password": "P@ssw0rd",
+      "expected": "failure"
+    },
+    {
+      "id": "empty-password",
+      "name": "Empty password field",
+      "type": "negative",
+      "email": "russell@myhomeclean.com.au",
+      "password": "",
+      "expected": "failure"
+    },
+    {
+      "id": "both-empty",
+      "name": "Both email and password empty",
+      "type": "negative",
+      "email": "",
+      "password": "",
+      "expected": "failure"
+    },
+    {
+      "id": "invalid-email-format",
+      "name": "Invalid email format",
+      "type": "negative",
+      "email": "notanemail",
+      "password": "P@ssw0rd",
+      "expected": "failure"
+    }
+  ]
+}
